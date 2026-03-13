@@ -18,6 +18,11 @@ namespace CompilerLabs.Core.Semantic
             {
                 VisitStatement(statement);
             }
+
+            foreach (var unused in _environment.GetUnusedVariables())
+            {
+                _errors.Add($"Variable '{unused.Name}' is declared but never used.");
+            }
         }
 
         public void VisitStatement(Statement statement)
@@ -28,11 +33,22 @@ namespace CompilerLabs.Core.Semantic
                     if (varStatement.Initializer != null)
                     {
                         VisitExpression(varStatement.Initializer);
+                        if (!_environment.DefineVariable(varStatement.Name))
+                        {
+                            _errors.Add($"Variable '{varStatement.Name}' is already defined.");
+                        }
+                        else
+                        {
+                            _environment.MarkVariableAsInitialized(varStatement.Name);
+                        }
                     }
-
-                    if (!_environment.DefineVariable(varStatement.Name))
+                    else
                     {
-                        _errors.Add($"Variable '{varStatement.Name}' is already defined.");
+                        _errors.Add($"Variable '{varStatement.Name}' must be initialized at declaration.");
+                        if (!_environment.DefineVariable(varStatement.Name))
+                        {
+                            _errors.Add($"Variable '{varStatement.Name}' is already defined.");
+                        }
                     }
 
                     break;
@@ -44,6 +60,8 @@ namespace CompilerLabs.Core.Semantic
                     break;
                 case BlockStatement blockStatement:
                     var previousEnvironment = _environment;
+                    var parentInitState = _environment.GetVariableInitializationState();
+
                     _environment = new SemanticEnvironment(previousEnvironment);
 
                     foreach (var innerStatement in blockStatement.Statements)
@@ -51,15 +69,44 @@ namespace CompilerLabs.Core.Semantic
                         VisitStatement(innerStatement);
                     }
 
+                    foreach (var unused in _environment.GetUnusedVariables())
+                    {
+                        _errors.Add($"Variable '{unused.Name}' is declared but never used.");
+                    }
+
                     _environment = previousEnvironment;
+                    _environment.RestoreInitializationState(parentInitState);
 
                     break;
                 case IfStatement ifStatement:
                     VisitExpression(ifStatement.Condition);
+
+                    var beforeThenState = _environment.GetVariableInitializationState();
                     VisitStatement(ifStatement.ThenBranch);
+                    var afterThenState = _environment.GetVariableInitializationState();
+
                     if (ifStatement.ElseBranch != null)
                     {
+                        _environment.RestoreInitializationState(beforeThenState);
                         VisitStatement(ifStatement.ElseBranch);
+                        var afterElseState = _environment.GetVariableInitializationState();
+
+                        // Find variables that are initialized in both branches
+                        var thenInitVars = GetInitializedVars(afterThenState);
+                        var elseInitVars = GetInitializedVars(afterElseState);
+                        var commonInitVars = thenInitVars.Intersect(elseInitVars).ToList();
+
+                        // Restore to before state and mark only commonly initialized variables
+                        _environment.RestoreInitializationState(beforeThenState);
+                        foreach (var varName in commonInitVars)
+                        {
+                            _environment.MarkVariableAsInitialized(varName);
+                        }
+                    }
+                    else
+                    {
+                        // No else branch: initialization in then is not guaranteed
+                        _environment.RestoreInitializationState(beforeThenState);
                     }
                     break;
 
@@ -88,12 +135,24 @@ namespace CompilerLabs.Core.Semantic
                     {
                         _errors.Add($"Variable '{v.Name}' is not defined.");
                     }
+                    else if (!_environment.IsVariableInitialized(v.Name))
+                    {
+                        _errors.Add($"Variable '{v.Name}' is used before initialization.");
+                    }
+                    else
+                    {
+                        _environment.MarkVariableAsUsed(v.Name);
+                    }
                     break;
                 case AssignExpression a:
                     VisitExpression(a.Value);
                     if (!_environment.IsVariableDefined(a.Name))
                     {
                         _errors.Add($"Variable '{a.Name}' is not defined.");
+                    }
+                    else
+                    {
+                        _environment.MarkVariableAsInitialized(a.Name);
                     }
                     break;
                 case BinaryExpression b:
@@ -110,5 +169,10 @@ namespace CompilerLabs.Core.Semantic
         }
 
         public IEnumerable<string> Errors => _errors;
+
+        private List<string> GetInitializedVars(Dictionary<string, bool> state)
+        {
+            return state.Where(kvp => kvp.Value).Select(kvp => kvp.Key).ToList();
+        }
     }
 }
