@@ -19,7 +19,11 @@ namespace CompilerLabs.Core.Lexer
             ["print"] = TokenType.PRINT,
             ["if"] = TokenType.IF,
             ["else"] = TokenType.ELSE,
-            ["while"] = TokenType.WHILE
+            ["while"] = TokenType.WHILE,
+            ["func"] = TokenType.FUNC,
+            ["return"] = TokenType.RETURN,
+            ["true"] = TokenType.TRUE,
+            ["false"] = TokenType.FALSE
         };
 
         private static readonly Dictionary<string, TokenType> Operators = new()
@@ -42,6 +46,9 @@ namespace CompilerLabs.Core.Lexer
             [")"] = TokenType.RPAREN,
             ["{"] = TokenType.LBRACE,
             ["}"] = TokenType.RBRACE,
+            ["["] = TokenType.LBRACKET,
+            ["]"] = TokenType.RBRACKET,
+            [","] = TokenType.COMMA,
             [";"] = TokenType.SEMICOLON
         };
 
@@ -65,6 +72,12 @@ namespace CompilerLabs.Core.Lexer
                 if (char.IsDigit(current))
                 {
                     yield return ReadNumber();
+                    continue;
+                }
+
+                if (current == '"')
+                {
+                    yield return ReadString();
                     continue;
                 }
 
@@ -109,6 +122,32 @@ namespace CompilerLabs.Core.Lexer
             return new Token(type, text, startPos, startLine, startCol);
         }
 
+        private Token ReadString()
+        {
+            var startPos = _position;
+            var startLine = _line;
+            var startCol = _column;
+
+            Next();
+
+            var valueStart = _position;
+            while (Peek() != '"' && Peek() != '\0')
+            {
+                Next();
+            }
+
+            if (Peek() == '\0')
+            {
+                throw new Exception($"[Lexer Error] Unterminated string at Line {startLine}, Column {startCol}");
+            }
+
+            var text = _input.Substring(valueStart, _position - valueStart);
+
+            Next();
+
+            return new Token(TokenType.STRING, text, startPos, startLine, startCol);
+        }
+
         private Token ReadOperatorOrPunctuation()
         {
             var startPos = _position;
@@ -119,7 +158,6 @@ namespace CompilerLabs.Core.Lexer
             {
                 var twoChars = _input.Substring(_position, 2);
 
-                //пробуем считать операторы вида ==, !=
                 if (Operators.TryGetValue(twoChars, out var opType))
                 {
                     Next(); 

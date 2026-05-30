@@ -5,8 +5,8 @@
         public TokenType Type { get; }
         public string Value { get; }
         public int Position { get; }
-        public int Line { get; }     // Добавили строку
-        public int Column { get; }   // Добавили колонку
+        public int Line { get; }
+        public int Column { get; }
 
         public Token(TokenType type, string value, int position, int line, int column)
         {

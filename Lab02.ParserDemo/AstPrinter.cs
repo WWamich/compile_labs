@@ -9,7 +9,6 @@ namespace Lab02.ParserDemo
 {
     public class AstPrinter
     {
-        // Главный метод для вывода всей программы
         public void Print(List<Statement> statements)
         {
             Console.WriteLine("Root (Program)");
@@ -19,16 +18,13 @@ namespace Lab02.ParserDemo
             }
         }
 
-        // Рекурсивный метод отрисовки
         private void PrintNode(object node, string indent, bool isLast)
         {
             if (node == null) return;
 
-            // Рисуем веточку
             string marker = isLast ? "└── " : "├── ";
             Console.Write(indent + marker);
 
-            // Подготавливаем отступ для дочерних элементов
             string childIndent = indent + (isLast ? "    " : "│   ");
 
             switch (node)
@@ -90,9 +86,38 @@ namespace Lab02.ParserDemo
                     Console.WriteLine($"AssignExpression: {assign.Name} =");
                     PrintNode(assign.Value, childIndent, true);
                     break;
+                    
+                case IndexAssignExpression indexAssign:
+                    Console.WriteLine("IndexAssignExpression");
+                    PrintNode(indexAssign.Target, childIndent, false);
+                    PrintNode(indexAssign.Index, childIndent, false);
+                    PrintNode(indexAssign.Value, childIndent, true);
+                    break;
 
                 case NumberExpression num:
                     Console.WriteLine($"Number: {num.Value}");
+                    break;
+                
+                case StringExpression str:
+                    Console.WriteLine($"String: \"{str.Value}\"");
+                    break;
+                
+                case BooleanExpression boolean:
+                    Console.WriteLine($"Boolean: {boolean.Value}");
+                    break;
+
+                case ArrayExpression array:
+                    Console.WriteLine("ArrayExpression");
+                    for (int j = 0; j < array.Elements.Count; j++)
+                    {
+                        PrintNode(array.Elements[j], childIndent, j == array.Elements.Count - 1);
+                    }
+                    break;
+
+                case IndexExpression index:
+                    Console.WriteLine("IndexExpression");
+                    PrintNode(index.Target, childIndent, false);
+                    PrintNode(index.Index, childIndent, true);
                     break;
 
                 case VariableExpression varExpr:

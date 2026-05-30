@@ -5,22 +5,26 @@
         NUMBER,
         ID,
         STRING,
+        TRUE,
+        FALSE,
         VAR,
+        FUNC,
+        RETURN,
 
         PRINT,
         IF, ELSE,
-        WHILE,      // while
+        WHILE,
 
-        // Operators
-        PLUS, MINUS, STAR, SLASH,   // + - * /
-        EQ, EQEQ, EXCL, NEQ,        // = == ! !=
-        LT, GT, LTEQ, GTEQ,         // < > <= >=
-        AND, OR,                    // && ||
+        PLUS, MINUS, STAR, SLASH,
+        EQ, EQEQ, EXCL, NEQ,
+        LT, GT, LTEQ, GTEQ,
+        AND, OR,
 
-        // Grouping & Punctuation
-        LPAREN, RPAREN, // ( )
-        LBRACE, RBRACE, // { }
-        SEMICOLON,      // ;
+        LPAREN, RPAREN,
+        LBRACE, RBRACE,
+        LBRACKET, RBRACKET,
+        COMMA,
+        SEMICOLON,
 
         EOF
     }
